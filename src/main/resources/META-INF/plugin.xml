@@ -5,7 +5,7 @@
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-    <name>PluginTest</name>
+    <name>GreenCode Inspector</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
     <vendor email="" url="https://inm23.atlassian.net/jira/software/projects/FP/boards/2">Forschungsteam</vendor>
@@ -14,7 +14,7 @@
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description>
-        <![CDATA[<b> First try at creating a PlugIn for IntelliJ <b> ]]>
+        <![CDATA[<b> This plugin analyzes your codebase and provides suggestions for "green code improvements," helping you write cleaner, more maintainable, and eco-friendly code. <b> ]]>
 
         <!-- Enter short description for your plugin here.<br><em>most HTML tags may be used</em> -->
     </description>
@@ -29,27 +29,12 @@
 
     </extensions>
     <actions>
-        <!--<action
-                id="com.example.plugintest.PopupDialogAction"
-                class="com.example.plugintest.PopupDialogAction"
-                text="Action Basics Plugin: Popup Dialog Action"
-                description="SDK action example">
-            <override-text place="MainMenu" text="Popup Dialog Action"/>
-            <keyboard-shortcut
-                    keymap="$default"
-                    first-keystroke="control alt A"
-                    second-keystroke="C"/>
-            <mouse-shortcut
-                    keymap="$default"
-                    keystroke="control button3 doubleClick"/>
-            <add-to-group group-id="ToolsMenu" anchor="first"/>
-        </action>-->
         <action
                 id="com.example.plugintest.GreenCodingSurveillance"
                 class="com.example.plugintest.GreenCodingSurveillance"
-                text="Green Coding Surveillance"
+                text="Green Coding Inspector"
                 description="Optimizes your code to be more effiecient and storage consuming">
-            <override-text place="MainMenu" text="Green Coding Surveillance"/>
+            <override-text place="MainMenu" text="Green Code Inspector"/>
             <keyboard-shortcut
                     keymap="$default"
                     first-keystroke="control alt G"
@@ -58,6 +43,7 @@
                     keymap="$default"
                     keystroke="control button3 doubleClick"/>
             <add-to-group group-id="ToolsMenu" anchor="first"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
         </action>
     </actions>
 </idea-plugin>
