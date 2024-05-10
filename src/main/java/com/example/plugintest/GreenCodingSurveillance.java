@@ -69,12 +69,13 @@ public class GreenCodingSurveillance extends AnAction {
                 }
 
                 // Send Code to the inspection
-                String[] result = checkCode(String.valueOf(modifiedText));
-                String correctedCode = result[0];
-                String reason = result[1];
+                AiAnswer result = checkCode(String.valueOf(modifiedText));
+                String correctedCode = result.codeOutput;
+                String reason = result.reason;
+                int[] correctedLines = result.lines;
 
                 // Replace Code with corrected Code
-                showPreviewDialog(project, String.valueOf(modifiedText), correctedCode, reason, () -> {
+                showPreviewDialog(project, String.valueOf(modifiedText), correctedCode, reason, correctedLines, () -> {
                     // Perform document modification within a WriteCommandAction
                     WriteCommandAction.runWriteCommandAction(project, () -> {
                         editor.getDocument().replaceString(editor.getSelectionModel().getSelectionStart(), editor.getSelectionModel().getSelectionEnd(), correctedCode);
@@ -98,12 +99,14 @@ public class GreenCodingSurveillance extends AnAction {
                     }
                 }
 
-                String[] result = checkCode(String.valueOf(modifiedText));
-                String correctedCode = result[0];
-                String reason = result[1];
+                // Send Code to the inspection
+                AiAnswer result = checkCode(String.valueOf(modifiedText));
+                String correctedCode = result.codeOutput;
+                String reason = result.reason;
+                int[] correctedLines = result.lines;
 
                 // Replace Code with corrected Code
-                showPreviewDialog(project, String.valueOf(modifiedText), correctedCode, reason, () -> {
+                showPreviewDialog(project, String.valueOf(modifiedText), correctedCode, reason, correctedLines, () -> {
                     // Perform document modification within a WriteCommandAction
                     WriteCommandAction.runWriteCommandAction(project, () -> {
                         editor.getDocument().setText(correctedCode);
@@ -117,13 +120,17 @@ public class GreenCodingSurveillance extends AnAction {
     }
 
 
-    private String[] checkCode(String codeInput) {
-        // check codeInput and send corrected code back with a reason why
-        return new String[]{codeInput, "Methods shouldn't be called in the Loop initialisation." };
+    private AiAnswer checkCode(String codeInput) {
+        // check codeInput and send corrected code back with a reason why and which lines are changed
+        String codeOutput = codeInput + ":)";
+        String reason = "Methods shouldn't be called in the Loop initialisation.";
+        int[] lines = new int[]{1,2};
+
+        return new AiAnswer( codeOutput, reason, lines );
     }
 
 
-    private void showPreviewDialog(Project project, String originalCode, String editedCode, String reason, Runnable confirmAction) {
+    private void showPreviewDialog(Project project, String originalCode, String editedCode, String reason, int[] lines, Runnable confirmAction) {
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -133,7 +140,7 @@ public class GreenCodingSurveillance extends AnAction {
         gbc.fill = GridBagConstraints.BOTH;
 
         JTextArea originalTextArea = new JTextArea(originalCode);
-        JTextArea editedTextArea = highlightLines(new JTextArea(editedCode), new int[]{1, 4, 2});
+        JTextArea editedTextArea = highlightLines(new JTextArea(editedCode), lines);
         JTextArea additionalTextArea = new JTextArea(reason);
 
         int padding = 10; // Adjust padding as needed
