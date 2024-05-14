@@ -289,16 +289,19 @@ public class GreenCodingSurveillance extends AnAction {
         for (int line : linesToHighlight) {
             int startOffset = 0;
             int endOffset;
-            for (int i = 0; i < line - 1; i++) {
-                startOffset += lines[i].length() + 1; // Add 1 for the newline character
+            if (line < lines.length) {
+                for (int i = 0; i < line - 1; i++) {
+                    startOffset += lines[i].length() + 1; // Add 1 for the newline character
+                }
+                endOffset = startOffset + lines[line - 1].length();
+                try {
+                    highlighter.addHighlight(startOffset, endOffset, painter);
+                } catch (Exception ex) {
+                    System.out.println("Couldn't highlight lines because: ");
+                    ex.printStackTrace();
+                }
             }
-            endOffset = startOffset + lines[line - 1].length();
-            try {
-                highlighter.addHighlight(startOffset, endOffset, painter);
-            } catch (Exception ex) {
-                System.out.println("Couldn't highlight lines because: ");
-                ex.printStackTrace();
-            }
+
         }
 
         return highlightedTextArea;
