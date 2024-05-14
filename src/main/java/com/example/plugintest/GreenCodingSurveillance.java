@@ -10,10 +10,15 @@ import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.VisualPosition;
 import com.intellij.openapi.project.Project;
-
-import com.intellij.ui.EditorTextField;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
+import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -21,10 +26,21 @@ import javax.swing.border.Border;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import java.awt.*;
-
-import static org.codehaus.groovy.runtime.DefaultGroovyMethods.contains;
+import java.io.IOException;
+import java.net.URI;
 
 public class GreenCodingSurveillance extends AnAction {
+    String UrlGet = "https://httpbin.org/get"; // URL to tht REST Service to get the code checked
+
+    // Marker to separate the parts in the response from the AI
+    String[] codeMarker = new String[]{"++", "--"};
+    String[] reasonMarker = new String[]{"#?#", "#!#"};
+    String[] lineMarker = new String[]{"$?$", "$!$"};
+
+    // code between ++ and --
+    // reason between #?# and #!#
+    // lines between $?$ and $!
+
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
         return ActionUpdateThread.BGT;
@@ -52,85 +68,163 @@ public class GreenCodingSurveillance extends AnAction {
             if (selectedText != null && !selectedText.isEmpty()) {
                 // If there's selected text get Lines and replace the selected text with corrected Code
 
-                // Get Line where the curser is
+                // Get Line where the cursor is
                 CaretModel caretModel = editor.getCaretModel();
                 Caret primaryCaret = caretModel.getPrimaryCaret();
                 VisualPosition selectionStartPosition = primaryCaret.getSelectionStartPosition();
                 int startLine = selectionStartPosition.getLine();
 
-                // Prepend line numbers to each line of selected text
-                StringBuilder modifiedText = new StringBuilder();
-                String[] lines = selectedText.split("\n");
-                for (int i = 0; i < lines.length; i++) {
-                    modifiedText.append(startLine + i + 1).append(": ").append(lines[i]);
-                    if (i < lines.length - 1) {
-                        modifiedText.append("\n");
-                    }
-                }
+
+                String codeInputWithLines = addLineNumbers(selectedText, startLine);
+                // System.out.println(codeInputWithLines);
+
 
                 // Send Code to the inspection
-                AiAnswer result = checkCode(String.valueOf(modifiedText));
+                AiAnswer result = checkCode(codeInputWithLines);
                 String correctedCode = result.codeOutput;
                 String reason = result.reason;
                 int[] correctedLines = result.lines;
 
-                // Replace Code with corrected Code
-                showPreviewDialog(project, String.valueOf(modifiedText), correctedCode, reason, correctedLines, () -> {
+
+
+                // Compare Code and display the reason for the change in a preview with highlighted lines
+                showPreviewDialog(codeInputWithLines, correctedCode, reason, correctedLines, () -> {
                     // Perform document modification within a WriteCommandAction
                     WriteCommandAction.runWriteCommandAction(project, () -> {
-                        editor.getDocument().replaceString(editor.getSelectionModel().getSelectionStart(), editor.getSelectionModel().getSelectionEnd(), correctedCode);
+                        // Replace Code with corrected Code
+                        editor.getDocument().replaceString(
+                                editor.getSelectionModel().getSelectionStart(),
+                                editor.getSelectionModel().getSelectionEnd(),
+                                // place corrected code with removed linenumber at the start of each line
+                                removeLineNumbers(correctedCode));
                     });
                 });
 
-                String savedText = modifiedText.toString();
-                System.out.println(savedText);
 
             } else {
                 // If no text is selected, get the entire file content
                 String fileContent = editor.getDocument().getText();
 
-                // Prepend line numbers to each line of selected text
-                StringBuilder modifiedText = new StringBuilder();
-                String[] lines = fileContent.split("\n");
-                for (int i = 0; i < lines.length; i++) {
-                    modifiedText.append(i + 1).append(": ").append(lines[i]);
-                    if (i < lines.length - 1) {
-                        modifiedText.append("\n");
-                    }
-                }
+
+                String codeInputWithLines = addLineNumbers(fileContent, 0);
+                //System.out.println(codeInputWithLines);
+
 
                 // Send Code to the inspection
-                AiAnswer result = checkCode(String.valueOf(modifiedText));
+                AiAnswer result = checkCode(codeInputWithLines);
                 String correctedCode = result.codeOutput;
                 String reason = result.reason;
                 int[] correctedLines = result.lines;
 
-                // Replace Code with corrected Code
-                showPreviewDialog(project, String.valueOf(modifiedText), correctedCode, reason, correctedLines, () -> {
+                // Compare Code and display the reason for the change in a preview with highlighted lines
+                showPreviewDialog(codeInputWithLines, correctedCode, reason, correctedLines, () -> {
                     // Perform document modification within a WriteCommandAction
                     WriteCommandAction.runWriteCommandAction(project, () -> {
-                        editor.getDocument().setText(correctedCode);
+                        // Replace Code with corrected Code with removed linenumber at the start of each line
+                        editor.getDocument().setText(removeLineNumbers(correctedCode));
                     });
                 });
 
-                String savedText = modifiedText.toString();
-                System.out.println(savedText);
             }
         }
     }
 
+    private String addLineNumbers(String input, int startLine) {
+        // add line numbers at the start of each line
+        StringBuilder modifiedText = new StringBuilder();
+        String[] lines = input.split("\n");
+        for (int i = 0; i < lines.length; i++) {
+            modifiedText.append(startLine + i + 1).append(": ").append(lines[i]);
+            if (i < lines.length - 1) {
+                modifiedText.append("\n");
+            }
+        }
+        return modifiedText.toString();
+    }
+    private String removeLineNumbers(String input) {
+        // remove Line numbers at the start of each line
+        return input.replaceAll("\\d+:", "");
+    }
 
     private AiAnswer checkCode(String codeInput) {
-        // check codeInput and send corrected code back with a reason why and which lines are changed
-        String codeOutput = codeInput + ":)";
+        // check codeInput and get corrected code back with a reason why and which lines are changed
+        String response;
+        try {
+            response = getCorrectCode(codeInput);
+            System.out.println("Response= " + response);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        // Split code to fit AiAnswer
+        return StringSplitter(response);
+
+        //Test Code
+        /*String codeOutput = codeInput + "//  :)  ";
         String reason = "Methods shouldn't be called in the Loop initialisation.";
-        int[] lines = new int[]{1,2};
+        int[] lines = new int[]{1};
 
         return new AiAnswer( codeOutput, reason, lines );
+        */
+    }
+
+    private String getCorrectCode(String codeInput) throws IOException {
+        // send code to AI to check and get the response via GET Request
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+
+            try {
+                // Build the URI with query parameters
+                URIBuilder builder = new URIBuilder(UrlGet);
+                builder.setParameter("codeInput", codeInput);
+                URI uri = builder.build();
+
+                // Create the GET request
+                HttpGet request = new HttpGet(uri);
+
+                // Execute the request
+                HttpResponse response = httpClient.execute(request);
+
+                // Extract and print the response wit added \n to separate each line into a new one
+                //System.out.println("ResponseBody: " + responseBody);
+                return EntityUtils.toString(response.getEntity()).replaceAll("\\\\n", "\n");
+            } catch (Exception e) {
+                System.out.println("Couldn't get the code from AI");
+                e.printStackTrace();
+            }
+        }
+        System.out.println("failed to GET");
+        return "failed";
+    }
+
+    private AiAnswer StringSplitter(String input) {
+        //Split Code into different parts, marked by the markers (defined at the top)
+
+        String code = StringUtils.substringBetween(input, codeMarker[0], codeMarker[1]);
+        String reason = StringUtils.substringBetween(input, reasonMarker[0], reasonMarker[1]);
+        String linesString = StringUtils.substringBetween(input, lineMarker[0], lineMarker[1]);
+
+        // Convert the third part string into an array of integers
+        String[] linesArray = linesString.split(",");
+        int[] lines = new int[linesArray.length];
+        for (int i = 0; i < linesArray.length; i++) {
+            lines[i] = Integer.parseInt(linesArray[i].trim());
+        }
+
+        /*System.out.println("code: " + code);
+        System.out.println("reason: " + reason);
+        System.out.println("lines: " + linesString);*/
+
+        return new AiAnswer(code, reason, lines);
+
     }
 
 
-    private void showPreviewDialog(Project project, String originalCode, String editedCode, String reason, int[] lines, Runnable confirmAction) {
+    private void showPreviewDialog(String originalCode, String editedCode, String reason, int[] lines, Runnable confirmAction) {
+        //Show the original Code, the Code modified by Ai and the reason for the change in three windows in a Preview,
+        //the changed lines by the AI are highlighted
+        // user can decide to accept the new code or not
+
         JPanel panel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -159,7 +253,7 @@ public class GreenCodingSurveillance extends AnAction {
 
         JScrollPane originalScrollPane = new JBScrollPane(originalTextArea);
         JScrollPane editedScrollPane = new JBScrollPane(editedTextArea);
-        JScrollPane additionalScrollPane = new JBScrollPane(additionalTextArea);
+        JScrollPane reasonScrollPane = new JBScrollPane(additionalTextArea);
 
         panel.add(originalScrollPane, gbc);
 
@@ -171,17 +265,18 @@ public class GreenCodingSurveillance extends AnAction {
         gbc.gridy = 1;
         gbc.gridwidth = 2;
 
-        panel.add(additionalScrollPane, gbc);
+        panel.add(reasonScrollPane, gbc);
 
         int userChoice = JOptionPane.showConfirmDialog(null, panel, "Preview", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
 
         if (userChoice == JOptionPane.YES_OPTION) {
-            // User accepted the changes, execute the confirm action
+            // User accepted the changes, execute the confirmation action
             confirmAction.run();
         }
     }
 
     private JTextArea highlightLines(JTextArea textArea, int[] linesToHighlight) {
+        // Highlight the lines changed by the AI in the modified Code preview
         JTextArea highlightedTextArea = new JTextArea();
         highlightedTextArea.setEditable(false);
         highlightedTextArea.setText(textArea.getText());
@@ -193,7 +288,7 @@ public class GreenCodingSurveillance extends AnAction {
 
         for (int line : linesToHighlight) {
             int startOffset = 0;
-            int endOffset = 0;
+            int endOffset;
             for (int i = 0; i < line - 1; i++) {
                 startOffset += lines[i].length() + 1; // Add 1 for the newline character
             }
@@ -201,6 +296,7 @@ public class GreenCodingSurveillance extends AnAction {
             try {
                 highlighter.addHighlight(startOffset, endOffset, painter);
             } catch (Exception ex) {
+                System.out.println("Couldn't highlight lines because: ");
                 ex.printStackTrace();
             }
         }
@@ -208,29 +304,4 @@ public class GreenCodingSurveillance extends AnAction {
         return highlightedTextArea;
 
     }
-
-    private void showEditorTextField(Project project, String originalCode, String editedCode, String reason, Runnable confirmAction) {
-        EditorTextField window = new EditorTextField();
-    }
-
-
-
-    /*private void showPreviewDialog(Project project, String originalCode, String editedCode, String reasonForChange, Runnable confirmAction) {
-        StringBuilder previewMessage = new StringBuilder();
-        previewMessage.append("<b> Original Code: <\b> \n\n");
-        previewMessage.append(originalCode);
-        previewMessage.append("\n\n <b> Edited Code: <\b> \n\n");
-        previewMessage.append(editedCode);
-        previewMessage.append("\n\n <b> Reason for the Change: <\b> \n\n");
-        previewMessage.append(reasonForChange);
-
-        int userChoice = Messages.showYesNoDialog(project, previewMessage.toString(), "Preview", "Accept", "Cancel", Messages.getQuestionIcon());
-
-        if (userChoice == Messages.YES) {
-            // User accepted the changes, execute the confirm action
-            confirmAction.run();
-        }
-    }*/
-
-
 }
