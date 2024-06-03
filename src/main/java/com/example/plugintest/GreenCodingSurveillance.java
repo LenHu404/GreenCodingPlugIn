@@ -248,7 +248,7 @@ public class GreenCodingSurveillance extends AnAction {
         editedTextArea.setBorder(customBorder);
         additionalTextArea.setBorder(customBorder);
 
-        originalTextArea.setEditable(false);
+        originalTextArea.setEditable(true);
         editedTextArea.setEditable(true);
 
         JScrollPane originalScrollPane = new JBScrollPane(originalTextArea);
@@ -267,9 +267,9 @@ public class GreenCodingSurveillance extends AnAction {
 
         panel.add(reasonScrollPane, gbc);
 
-        int userChoice = JOptionPane.showConfirmDialog(null, panel, "Preview", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        int userChoice = JOptionPane.showConfirmDialog(null, panel, "Green-Coding-Inspector: Results", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
 
-        if (userChoice == JOptionPane.YES_OPTION) {
+        if (userChoice == JOptionPane.OK_OPTION) {
             // User accepted the changes, execute the confirmation action
             confirmAction.run();
         }
