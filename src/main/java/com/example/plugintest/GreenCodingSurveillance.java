@@ -29,13 +29,15 @@ import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 
+import static com.example.plugintest.KIConnect.getAIAnswer;
+
 public class GreenCodingSurveillance extends AnAction {
     String UrlGet = "https://httpbin.org/get"; // URL to tht REST Service to get the code checked
 
     // Marker to separate the parts in the response from the AI
-    String[] codeMarker = new String[]{"++", "--"};
-    String[] reasonMarker = new String[]{"#?#", "#!#"};
-    String[] lineMarker = new String[]{"$?$", "$!$"};
+    String[] codeMarker = new String[]{"-!-", "-!-"};
+    String[] reasonMarker = new String[]{"#?#", "#?#"};
+    String[] lineMarker = new String[]{"$!$", "$!$"};
 
     // code between ++ and --
     // reason between #?# and #!#
@@ -129,6 +131,8 @@ public class GreenCodingSurveillance extends AnAction {
         }
     }
 
+
+
     private String addLineNumbers(String input, int startLine) {
         // add line numbers at the start of each line
         StringBuilder modifiedText = new StringBuilder();
@@ -149,24 +153,19 @@ public class GreenCodingSurveillance extends AnAction {
     private AiAnswer checkCode(String codeInput) {
         // check codeInput and get corrected code back with a reason why and which lines are changed
         String response;
-        try {
-            response = getCorrectCode(codeInput);
-            System.out.println("Response= " + response);
-
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        response = getAIAnswer(codeInput);
+        System.out.println("Response= " + response);
 
         // Split code to fit AiAnswer
         return StringSplitter(response);
 
         //Test Code
-        /*String codeOutput = codeInput + "//  :)  ";
-        String reason = "Methods shouldn't be called in the Loop initialisation.";
+        /*String codeOutput = response;
+        String reason = "Test";
         int[] lines = new int[]{1};
 
-        return new AiAnswer( codeOutput, reason, lines );
-        */
+        return new AiAnswer( codeOutput, reason, lines );*/
+
     }
 
     private String getCorrectCode(String codeInput) throws IOException {
@@ -233,8 +232,8 @@ public class GreenCodingSurveillance extends AnAction {
         gbc.weighty = 2;
         gbc.fill = GridBagConstraints.BOTH;
 
-        JTextArea originalTextArea = new JTextArea(originalCode);
-        JTextArea editedTextArea = highlightLines(new JTextArea(editedCode), lines);
+        JTextArea originalTextArea = highlightLines(new JTextArea(originalCode),lines);
+        JTextArea editedTextArea = new JTextArea(editedCode);
         JTextArea additionalTextArea = new JTextArea(reason);
 
         int padding = 10; // Adjust padding as needed
@@ -282,7 +281,7 @@ public class GreenCodingSurveillance extends AnAction {
         highlightedTextArea.setText(textArea.getText());
 
         Highlighter highlighter = highlightedTextArea.getHighlighter();
-        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(JBColor.GREEN);
+        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(JBColor.RED);
 
         String[] lines = textArea.getText().split("\n");
 
