@@ -13,12 +13,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import org.apache.commons.lang.StringUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -26,14 +21,11 @@ import javax.swing.border.Border;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import java.awt.*;
-import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 
 import static com.example.plugintest.KIConnect.getAIAnswer;
 
 public class GreenCodingSurveillance extends AnAction {
-    String UrlGet = "https://httpbin.org/get"; // URL to tht REST Service to get the code checked
 
     // Marker to separate the parts in the response from the AI
     String[] codeMarker = new String[]{"-!-", "-!-"};
@@ -161,40 +153,12 @@ public class GreenCodingSurveillance extends AnAction {
         return StringSplitter(response);
 
         //Test Code
-        /*String codeOutput = response;
+        /* String codeOutput = response;
         String reason = "Test";
         int[] lines = new int[]{1};
 
         return new AiAnswer( codeOutput, reason, lines );*/
 
-    }
-
-    private String getCorrectCode(String codeInput) throws IOException {
-        // send code to AI to check and get the response via GET Request
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-
-            try {
-                // Build the URI with query parameters
-                URIBuilder builder = new URIBuilder(UrlGet);
-                builder.setParameter("codeInput", codeInput);
-                URI uri = builder.build();
-
-                // Create the GET request
-                HttpGet request = new HttpGet(uri);
-
-                // Execute the request
-                HttpResponse response = httpClient.execute(request);
-
-                // Extract and print the response wit added \n to separate each line into a new one
-                //System.out.println("ResponseBody: " + responseBody);
-                return EntityUtils.toString(response.getEntity()).replaceAll("\\\\n", "\n");
-            } catch (Exception e) {
-                System.out.println("Couldn't get the code from AI");
-                e.printStackTrace();
-            }
-        }
-        System.out.println("failed to GET");
-        return "failed";
     }
 
     private AiAnswer StringSplitter(String input) {
@@ -214,8 +178,8 @@ public class GreenCodingSurveillance extends AnAction {
                     try {
                         int start = Integer.parseInt(range[0]);
                         int end = Integer.parseInt(range[1]);
-                        for (int index = start; index <= end; index++) {
-                            lines.add(index);
+                        for (int number = start; number <= end; number++) {
+                            lines.add(number);
                         }
                     } catch (NumberFormatException e) {
                         // Handle error for malformed range
