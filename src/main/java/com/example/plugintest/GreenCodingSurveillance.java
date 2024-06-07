@@ -28,6 +28,7 @@ import javax.swing.text.Highlighter;
 import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 
 import static com.example.plugintest.KIConnect.getAIAnswer;
 
@@ -205,16 +206,38 @@ public class GreenCodingSurveillance extends AnAction {
 
         // Convert the third part string into an array of integers
         String[] linesArray = linesString.split(",");
-        int[] lines = new int[linesArray.length];
-        for (int i = 0; i < linesArray.length; i++) {
-            lines[i] = Integer.parseInt(linesArray[i].trim());
+        ArrayList<Integer> lines = new ArrayList<>();
+        for (String s : linesArray) {
+            if (s.contains("-")) {
+                String[] range = s.split("-");
+                if (range.length == 2) {
+                    try {
+                        int start = Integer.parseInt(range[0]);
+                        int end = Integer.parseInt(range[1]);
+                        for (int index = start; index <= end; index++) {
+                            lines.add(index);
+                        }
+                    } catch (NumberFormatException e) {
+                        // Handle error for malformed range
+                        System.err.println("Invalid range format: " + s);
+                    }
+                }
+            } else if (!s.isEmpty()) {
+                try {
+                    lines.add(Integer.parseInt(s));
+                } catch (NumberFormatException e) {
+                    // Handle error for malformed number
+                    System.err.println("Invalid number format: " + s);
+                }
+            }
         }
-
         /*System.out.println("code: " + code);
         System.out.println("reason: " + reason);
         System.out.println("lines: " + linesString);*/
+        int[] linesFromList = lines.stream().mapToInt(i -> i).toArray();
 
-        return new AiAnswer(code, reason, lines);
+
+        return new AiAnswer(code, reason,linesFromList);
 
     }
 
