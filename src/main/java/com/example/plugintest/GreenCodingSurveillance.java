@@ -10,10 +10,10 @@ import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.VisualPosition;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.WindowManager;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import org.apache.commons.lang.StringUtils;
-
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -22,8 +22,9 @@ import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 
-import static com.example.plugintest.KIConnect.getAIAnswer;
+import static com.example.plugintest.KIConnect.getAIAnswerAsync;
 
 public class GreenCodingSurveillance extends AnAction {
 
@@ -53,73 +54,21 @@ public class GreenCodingSurveillance extends AnAction {
         Project project = e.getProject();
         Editor editor = e.getData(PlatformDataKeys.EDITOR);
 
-
         if (editor != null) {
-            // Get the selected text
-
             String selectedText = editor.getSelectionModel().getSelectedText();
-
-
             if (selectedText != null && !selectedText.isEmpty()) {
-                // If there's selected text get Lines and replace the selected text with corrected Code
-
-                // Get Line where the cursor is
                 CaretModel caretModel = editor.getCaretModel();
                 Caret primaryCaret = caretModel.getPrimaryCaret();
                 VisualPosition selectionStartPosition = primaryCaret.getSelectionStartPosition();
                 int startLine = selectionStartPosition.getLine();
 
-
                 String codeInputWithLines = addLineNumbers(selectedText, startLine);
-                // System.out.println(codeInputWithLines);
-
-
-                // Send Code to the inspection
-                AiAnswer result = checkCode(codeInputWithLines);
-                String correctedCode = result.codeOutput;
-                String reason = result.reason;
-                int[] correctedLines = result.lines;
-
-
-
-                // Compare Code and display the reason for the change in a preview with highlighted lines
-                showPreviewDialog(codeInputWithLines, correctedCode, reason, correctedLines, () -> {
-                    // Perform document modification within a WriteCommandAction
-                    WriteCommandAction.runWriteCommandAction(project, () -> {
-                        // Replace Code with corrected Code
-                        editor.getDocument().replaceString(
-                                editor.getSelectionModel().getSelectionStart(),
-                                editor.getSelectionModel().getSelectionEnd(),
-                                // place corrected code with removed linenumber at the start of each line
-                                removeLineNumbers(correctedCode));
-                    });
-                });
-
-
+                processCodeAsync(codeInputWithLines, project, editor);
             } else {
-                // If no text is selected, get the entire file content
                 String fileContent = editor.getDocument().getText();
 
-
                 String codeInputWithLines = addLineNumbers(fileContent, 0);
-                //System.out.println(codeInputWithLines);
-
-
-                // Send Code to the inspection
-                AiAnswer result = checkCode(codeInputWithLines);
-                String correctedCode = result.codeOutput;
-                String reason = result.reason;
-                int[] correctedLines = result.lines;
-
-                // Compare Code and display the reason for the change in a preview with highlighted lines
-                showPreviewDialog(codeInputWithLines, correctedCode, reason, correctedLines, () -> {
-                    // Perform document modification within a WriteCommandAction
-                    WriteCommandAction.runWriteCommandAction(project, () -> {
-                        // Replace Code with corrected Code with removed linenumber at the start of each line
-                        editor.getDocument().setText(removeLineNumbers(correctedCode));
-                    });
-                });
-
+                processCodeAsync(codeInputWithLines, project, editor);
             }
         }
     }
@@ -143,22 +92,37 @@ public class GreenCodingSurveillance extends AnAction {
         return input.replaceAll("\\d+:", "");
     }
 
-    private AiAnswer checkCode(String codeInput) {
-        // check codeInput and get corrected code back with a reason why and which lines are changed
-        String response;
-        response = getAIAnswer(codeInput);
-        System.out.println("Response= " + response);
+    private void processCodeAsync(String codeInputWithLines, Project project, Editor editor) {
+        JFrame parentFrame = WindowManager.getInstance().getFrame(project);
+        LoadingDialog loadingDialog = new LoadingDialog(parentFrame);
+        loadingDialog.showDialog();
 
-        // Split code to fit AiAnswer
-        return StringSplitter(response);
+        CompletableFuture.supplyAsync(() -> {
+            String response = null;
+            try {
+                response = getAIAnswerAsync(codeInputWithLines).get();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return response;
+        }).thenAccept(response -> {
+            loadingDialog.hideDialog();
+            AiAnswer result = StringSplitter(response);
+            String correctedCode = result.codeOutput;
+            String reason = result.reason;
+            int[] correctedLines = result.lines;
 
-        //Test Code
-        /* String codeOutput = response;
-        String reason = "Test";
-        int[] lines = new int[]{1};
-
-        return new AiAnswer( codeOutput, reason, lines );*/
-
+            SwingUtilities.invokeLater(() -> {
+                showPreviewDialog(codeInputWithLines, correctedCode, reason, correctedLines, () -> {
+                    WriteCommandAction.runWriteCommandAction(project, () -> {
+                        editor.getDocument().replaceString(
+                                editor.getSelectionModel().getSelectionStart(),
+                                editor.getSelectionModel().getSelectionEnd(),
+                                removeLineNumbers(correctedCode));
+                    });
+                });
+            });
+        });
     }
 
     private AiAnswer StringSplitter(String input) {
@@ -222,6 +186,8 @@ public class GreenCodingSurveillance extends AnAction {
         JTextArea originalTextArea = highlightLines(new JTextArea(originalCode),lines);
         JTextArea editedTextArea = new JTextArea(editedCode);
         JTextArea additionalTextArea = new JTextArea(reason);
+        additionalTextArea.setLineWrap(true);
+        additionalTextArea.setWrapStyleWord(true);
 
         int padding = 10; // Adjust padding as needed
         Border customBorder = BorderFactory.createCompoundBorder(
@@ -291,6 +257,5 @@ public class GreenCodingSurveillance extends AnAction {
         }
 
         return highlightedTextArea;
-
     }
 }

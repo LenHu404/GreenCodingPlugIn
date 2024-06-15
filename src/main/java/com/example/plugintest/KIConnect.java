@@ -1,9 +1,8 @@
 package com.example.plugintest;
 
-import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.ChatChoice;
-import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatMessage;
 import com.azure.ai.openai.models.ChatRole;
@@ -11,18 +10,19 @@ import com.azure.core.credential.AzureKeyCredential;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class KIConnect {
 
 
-    public static String getAIAnswer(String codeInput) {
+    public static CompletableFuture<String> getAIAnswerAsync(String codeInput) {
         String endpoint = "https://greencoding-ai.openai.azure.com/";
         String azureOpenaiKey = "eb7709e19cb14584862d1a78fb1122ba";
         String deploymentOrModelId = "gpt-4";
-        OpenAIClient client = new OpenAIClientBuilder()
+        OpenAIAsyncClient client = new OpenAIClientBuilder()
                 .endpoint(endpoint)
                 .credential(new AzureKeyCredential(azureOpenaiKey))
-                .buildClient();
+                .buildAsyncClient();
         System.out.println(client);
 
         List<ChatMessage> chatMessages = new ArrayList<>();
@@ -77,14 +77,14 @@ public class KIConnect {
         options.setTopP(0.95);
         options.setStop(List.of());
         options.setStream(false);
-        ChatCompletions chatCompletions = client.getChatCompletions(deploymentOrModelId, options);
-
-        for (ChatChoice choice : chatCompletions.getChoices()) {
-            ChatMessage message = choice.getMessage();
-            System.out.println("Message from " + message.getRole() + ":");
-            System.out.println(message.getContent());
-            return message.getContent();
-        }
-        return "Missed answer";
+        return client.getChatCompletions(deploymentOrModelId, options).toFuture().thenApply(chatCompletions -> {
+            for (ChatChoice choice : chatCompletions.getChoices()) {
+                ChatMessage message = choice.getMessage();
+                System.out.println("Message from " + message.getRole() + ":");
+                System.out.println(message.getContent());
+                return message.getContent();
+            }
+            return "Missed Answer";
+        });
     }
 }
