@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.PlatformDataKeys;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Caret;
 import com.intellij.openapi.editor.CaretModel;
@@ -28,14 +29,9 @@ import static com.example.plugintest.KIConnect.getAIAnswerAsync;
 
 public class GreenCodingSurveillance extends AnAction {
 
-    // Marker to separate the parts in the response from the AI
     String[] codeMarker = new String[]{"-!-", "-!-"};
     String[] reasonMarker = new String[]{"#?#", "#?#"};
     String[] lineMarker = new String[]{"$!$", "$!$"};
-
-    // code between ++ and --
-    // reason between #?# and #!#
-    // lines between $?$ and $!
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
@@ -44,7 +40,6 @@ public class GreenCodingSurveillance extends AnAction {
 
     @Override
     public void update(AnActionEvent e) {
-        // Set the availability based on whether a project is open
         Project project = e.getProject();
         e.getPresentation().setEnabledAndVisible(project != null);
     }
@@ -63,20 +58,17 @@ public class GreenCodingSurveillance extends AnAction {
                 int startLine = selectionStartPosition.getLine();
 
                 String codeInputWithLines = addLineNumbers(selectedText, startLine);
-                processCodeAsync(codeInputWithLines, project, editor);
+                processCodeAsync(codeInputWithLines, project, editor, startLine);
             } else {
                 String fileContent = editor.getDocument().getText();
 
                 String codeInputWithLines = addLineNumbers(fileContent, 0);
-                processCodeAsync(codeInputWithLines, project, editor);
+                processCodeAsync(codeInputWithLines, project, editor, 0);
             }
         }
     }
 
-
-
     private String addLineNumbers(String input, int startLine) {
-        // add line numbers at the start of each line
         StringBuilder modifiedText = new StringBuilder();
         String[] lines = input.split("\n");
         for (int i = 0; i < lines.length; i++) {
@@ -87,12 +79,12 @@ public class GreenCodingSurveillance extends AnAction {
         }
         return modifiedText.toString();
     }
+
     private String removeLineNumbers(String input) {
-        // remove Line numbers at the start of each line
         return input.replaceAll("\\d+:", "");
     }
 
-    private void processCodeAsync(String codeInputWithLines, Project project, Editor editor) {
+    private void processCodeAsync(String codeInputWithLines, Project project, Editor editor, int startLine) {
         JFrame parentFrame = WindowManager.getInstance().getFrame(project);
         LoadingDialog loadingDialog = new LoadingDialog(parentFrame);
         loadingDialog.showDialog();
@@ -107,32 +99,37 @@ public class GreenCodingSurveillance extends AnAction {
             return response;
         }).thenAccept(response -> {
             loadingDialog.hideDialog();
+            if (loadingDialog.isCancelled() || response == null) {
+                return;
+            }
             AiAnswer result = StringSplitter(response);
             String correctedCode = result.codeOutput;
             String reason = result.reason;
             int[] correctedLines = result.lines;
 
             SwingUtilities.invokeLater(() -> {
-                showPreviewDialog(codeInputWithLines, correctedCode, reason, correctedLines, () -> {
-                    WriteCommandAction.runWriteCommandAction(project, () -> {
-                        editor.getDocument().replaceString(
-                                editor.getSelectionModel().getSelectionStart(),
-                                editor.getSelectionModel().getSelectionEnd(),
-                                removeLineNumbers(correctedCode));
+                showPreviewDialog(codeInputWithLines, addLineNumbers(removeLineNumbers(correctedCode), startLine), reason, correctedLines, startLine, () -> {
+                    // Ensure that the write action is executed on the EDT
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        WriteCommandAction.runWriteCommandAction(project, () -> {
+                            editor.getDocument().replaceString(
+                                    editor.getSelectionModel().getSelectionStart(),
+                                    editor.getSelectionModel().getSelectionEnd(),
+                                    removeLineNumbers(correctedCode));
+                        });
                     });
                 });
             });
         });
     }
 
-    private AiAnswer StringSplitter(String input) {
-        //Split Code into different parts, marked by the markers (defined at the top)
 
+
+    private AiAnswer StringSplitter(String input) {
         String code = StringUtils.substringBetween(input, codeMarker[0], codeMarker[1]);
         String reason = StringUtils.substringBetween(input, reasonMarker[0], reasonMarker[1]);
         String linesString = StringUtils.substringBetween(input, lineMarker[0], lineMarker[1]);
 
-        // Convert the third part string into an array of integers
         String[] linesArray = linesString.split(",");
         ArrayList<Integer> lines = new ArrayList<>();
         for (String s : linesArray) {
@@ -140,42 +137,33 @@ public class GreenCodingSurveillance extends AnAction {
                 String[] range = s.split("-");
                 if (range.length == 2) {
                     try {
-                        int start = Integer.parseInt(range[0]);
-                        int end = Integer.parseInt(range[1]);
+                        int start = Integer.parseInt(range[0].trim());
+                        int end = Integer.parseInt(range[1].trim());
                         for (int number = start; number <= end; number++) {
                             lines.add(number);
                         }
                     } catch (NumberFormatException e) {
-                        // Handle error for malformed range
-                        System.err.println("Invalid range format: " + s);
+                        System.err.println(e);
+                        System.err.println("Invalid range format:" + s);
                     }
                 }
             } else if (!s.isEmpty()) {
                 try {
-                    lines.add(Integer.parseInt(s));
+                    lines.add(Integer.parseInt(s.trim()));
                 } catch (NumberFormatException e) {
-                    // Handle error for malformed number
-                    System.err.println("Invalid number format: " + s);
+                    System.err.println(e);
+                    System.err.println("Invalid number format:" + s);
                 }
             }
         }
-        /*System.out.println("code: " + code);
-        System.out.println("reason: " + reason);
-        System.out.println("lines: " + linesString);*/
         int[] linesFromList = lines.stream().mapToInt(i -> i).toArray();
 
-
-        return new AiAnswer(code, reason,linesFromList);
-
+        return new AiAnswer(code, reason, linesFromList);
     }
 
-
-    private void showPreviewDialog(String originalCode, String editedCode, String reason, int[] lines, Runnable confirmAction) {
-        //Show the original Code, the Code modified by Ai and the reason for the change in three windows in a Preview,
-        //the changed lines by the AI are highlighted
-        // user can decide to accept the new code or not
-
+    private void showPreviewDialog(String originalCode, String editedCode, String reason, int[] lines, int startLine, Runnable confirmAction) {
         JPanel panel = new JPanel(new GridBagLayout());
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -183,19 +171,18 @@ public class GreenCodingSurveillance extends AnAction {
         gbc.weighty = 2;
         gbc.fill = GridBagConstraints.BOTH;
 
-        JTextArea originalTextArea = highlightLines(new JTextArea(originalCode),lines);
+        JTextArea originalTextArea = highlightLines(new JTextArea(originalCode), lines, startLine, JBColor.RED);
         JTextArea editedTextArea = new JTextArea(editedCode);
         JTextArea additionalTextArea = new JTextArea(reason);
         additionalTextArea.setLineWrap(true);
         additionalTextArea.setWrapStyleWord(true);
 
-        int padding = 10; // Adjust padding as needed
+        int padding = 10;
         Border customBorder = BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(JBColor.GRAY), // Outer border
-                BorderFactory.createEmptyBorder(padding, padding, padding, padding) // Padding
+                BorderFactory.createLineBorder(JBColor.GRAY),
+                BorderFactory.createEmptyBorder(padding, padding, padding, padding)
         );
 
-        // Set the custom border to the JTextArea
         originalTextArea.setBorder(customBorder);
         editedTextArea.setBorder(customBorder);
         additionalTextArea.setBorder(customBorder);
@@ -207,53 +194,66 @@ public class GreenCodingSurveillance extends AnAction {
         JScrollPane editedScrollPane = new JBScrollPane(editedTextArea);
         JScrollPane reasonScrollPane = new JBScrollPane(additionalTextArea);
 
+        // Set preferred and minimum size for the scroll panes
+        Dimension minSize = new Dimension(400, 200); // Set your desired minimum size
+        Dimension preferredSize = new Dimension(600, 400); // Set your desired preferred size
+
+        originalScrollPane.setMinimumSize(minSize);
+        originalScrollPane.setPreferredSize(preferredSize);
+
+        editedScrollPane.setMinimumSize(minSize);
+        editedScrollPane.setPreferredSize(preferredSize);
+
+        reasonScrollPane.setMinimumSize(new Dimension(400, 30)); // Set minimum size for the reason area
+        reasonScrollPane.setPreferredSize(new Dimension(600, 50)); // Set preferred size for the reason area
+
         panel.add(originalScrollPane, gbc);
 
         gbc.gridx = 1;
-
         panel.add(editedScrollPane, gbc);
 
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.gridwidth = 2;
-
         panel.add(reasonScrollPane, gbc);
+
 
         int userChoice = JOptionPane.showConfirmDialog(null, panel, "Green-Coding-Inspector: Results", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
 
         if (userChoice == JOptionPane.OK_OPTION) {
-            // User accepted the changes, execute the confirmation action
             confirmAction.run();
         }
     }
 
-    private JTextArea highlightLines(JTextArea textArea, int[] linesToHighlight) {
-        // Highlight the lines changed by the AI in the modified Code preview
+    private JTextArea highlightLines(JTextArea textArea, int[] linesToHighlight, int startLine, JBColor color) {
         JTextArea highlightedTextArea = new JTextArea();
         highlightedTextArea.setEditable(false);
         highlightedTextArea.setText(textArea.getText());
 
         Highlighter highlighter = highlightedTextArea.getHighlighter();
-        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(JBColor.RED);
+        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(color);
 
         String[] lines = textArea.getText().split("\n");
 
         for (int line : linesToHighlight) {
+            line -= startLine;
             int startOffset = 0;
             int endOffset;
             if (line < lines.length) {
                 for (int i = 0; i < line - 1; i++) {
-                    startOffset += lines[i].length() + 1; // Add 1 for the newline character
+                    startOffset += lines[i].length() + 1;
                 }
                 endOffset = startOffset + lines[line - 1].length();
                 try {
                     highlighter.addHighlight(startOffset, endOffset, painter);
+                    System.out.println("Added highlighter for line: " + (line + startLine));
                 } catch (Exception ex) {
                     System.out.println("Couldn't highlight lines because: ");
                     ex.printStackTrace();
                 }
+            } else {
+                System.out.println("Didn't highlight because of: line = " + line + " < lines.length = " + lines.length);
             }
-
         }
 
         return highlightedTextArea;
