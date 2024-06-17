@@ -13,7 +13,7 @@ public class LoadingDialog {
         dialog = new JDialog(parentFrame, "Loading", true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout());
-        dialog.add(new JLabel("Processing...", new AnimatedIcon.Default(), SwingConstants.LEFT));
+        dialog.add(new JLabel("Getting the answer from the AI...", new AnimatedIcon.Default(), SwingConstants.LEFT));
 
         JButton cancelButton = new JButton("Abbrechen");
         cancelButton.addActionListener(e -> cancel());

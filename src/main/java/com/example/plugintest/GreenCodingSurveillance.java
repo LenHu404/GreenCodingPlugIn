@@ -204,8 +204,8 @@ public class GreenCodingSurveillance extends AnAction {
         editedScrollPane.setMinimumSize(minSize);
         editedScrollPane.setPreferredSize(preferredSize);
 
-        reasonScrollPane.setMinimumSize(new Dimension(400, 30)); // Set minimum size for the reason area
-        reasonScrollPane.setPreferredSize(new Dimension(600, 50)); // Set preferred size for the reason area
+        reasonScrollPane.setMinimumSize(new Dimension(400, 40)); // Set minimum size for the reason area
+        reasonScrollPane.setPreferredSize(new Dimension(600, 60)); // Set preferred size for the reason area
 
         panel.add(originalScrollPane, gbc);
 
