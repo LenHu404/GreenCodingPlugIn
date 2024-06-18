@@ -1,6 +1,8 @@
 package com.example.plugintest;
 
 import com.intellij.ui.AnimatedIcon;
+import com.intellij.util.ui.JBDimension;
+import com.intellij.util.ui.JBUI;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,13 +15,17 @@ public class LoadingDialog {
         dialog = new JDialog(parentFrame, "Loading", true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout());
-        dialog.add(new JLabel("Getting the answer from the AI...", new AnimatedIcon.Default(), SwingConstants.LEFT));
-
+        JLabel infoText = new JLabel(
+                " Getting the answer from the AI... \n This can take up to 15s depending on your Network.",
+                new AnimatedIcon.Default(),
+                SwingConstants.LEFT);
+        infoText.setHorizontalAlignment(SwingConstants.CENTER);
+        dialog.add(infoText);
         JButton cancelButton = new JButton("Abbrechen");
         cancelButton.addActionListener(e -> cancel());
         dialog.add(cancelButton, BorderLayout.SOUTH);
+        dialog.setSize(550,100);
 
-        dialog.setSize(250, 100);
         dialog.setLocationRelativeTo(parentFrame);
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override

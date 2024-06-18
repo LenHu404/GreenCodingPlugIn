@@ -1,5 +1,9 @@
 package com.example.plugintest;
 
+import com.intellij.codeInsight.hint.HintManager;
+import com.intellij.notification.NotificationGroupManager;
+import com.intellij.notification.NotificationType;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -12,6 +16,7 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.VisualPosition;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.WindowManager;
+import com.intellij.ui.GotItTooltip;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import org.apache.commons.lang.StringUtils;
@@ -95,6 +100,11 @@ public class GreenCodingSurveillance extends AnAction {
                 response = getAIAnswerAsync(codeInputWithLines).get();
             } catch (Exception e) {
                 e.printStackTrace();
+                System.out.println("Can't Connect.");
+                NotificationGroupManager.getInstance()
+                        .getNotificationGroup("Load Error")
+                        .createNotification("Connection error","It seems like the plugIn can't connect to the AI. \n Please check if you are conected to the internet.", NotificationType.ERROR)
+                        .notify(project);
             }
             return response;
         }).thenAccept(response -> {
