@@ -19,9 +19,6 @@ dependencies {
     implementation("com.azure:azure-identity:1.4.2") {
         exclude(group = "org.slf4j", module = "slf4j-api")
     }
-    // Add the SLF4J dependency explicitly if needed
-    implementation("org.slf4j:slf4j-api:1.7.36")
-    implementation("org.slf4j:slf4j-simple:1.7.36")
 
 }
 
