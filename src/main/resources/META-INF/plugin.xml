@@ -5,10 +5,10 @@
 
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
-    <name>GreenCode Inspector</name>
+    <name>Inspector GreenCode</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="" url="https://inm23.atlassian.net/jira/software/projects/FP/boards/2">Forschungsprojektteam</vendor>
+    <vendor email="" url="https://github.com/LenHu404/GreenCodingPlugIn"><![CDATA[Forschungsprojektteam]]></vendor>
 
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
