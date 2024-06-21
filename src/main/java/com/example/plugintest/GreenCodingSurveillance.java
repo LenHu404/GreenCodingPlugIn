@@ -136,8 +136,8 @@ public class GreenCodingSurveillance extends AnAction {
 
 
     private AiAnswer StringSplitter(String input) {
-        String code = StringUtils.substringBetween(input, codeMarker[0], codeMarker[1]);
-        String reason = StringUtils.substringBetween(input, reasonMarker[0], reasonMarker[1]);
+        String code = StringUtils.substringBetween(input, codeMarker[0], codeMarker[1]).trim();
+        String reason = StringUtils.substringBetween(input, reasonMarker[0], reasonMarker[1]).trim();
         String linesString = StringUtils.substringBetween(input, lineMarker[0], lineMarker[1]);
 
         String[] linesArray = linesString.split(",");
