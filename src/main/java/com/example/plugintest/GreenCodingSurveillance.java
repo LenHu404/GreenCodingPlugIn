@@ -1,9 +1,7 @@
 package com.example.plugintest;
 
-import com.intellij.codeInsight.hint.HintManager;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -16,7 +14,6 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.VisualPosition;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.WindowManager;
-import com.intellij.ui.GotItTooltip;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
 import org.apache.commons.lang.StringUtils;
@@ -90,8 +87,10 @@ public class GreenCodingSurveillance extends AnAction {
     }
 
     private void processCodeAsync(String codeInputWithLines, Project project, Editor editor, int startLine) {
+        int estimatedTimeInSeconds = calculateProcessTime(codeInputWithLines);
         JFrame parentFrame = WindowManager.getInstance().getFrame(project);
-        LoadingDialog loadingDialog = new LoadingDialog(parentFrame);
+        LoadingDialog loadingDialog = new LoadingDialog(parentFrame, estimatedTimeInSeconds);
+        System.out.println("Start showing Loading-screen with estimated time being: " + estimatedTimeInSeconds);
         loadingDialog.showDialog();
 
         CompletableFuture.supplyAsync(() -> {
@@ -103,7 +102,7 @@ public class GreenCodingSurveillance extends AnAction {
                 System.out.println("Can't Connect.");
                 NotificationGroupManager.getInstance()
                         .getNotificationGroup("Load Error")
-                        .createNotification("Connection error","It seems like the plugIn can't connect to the AI. \n Please check if you are conected to the internet.", NotificationType.ERROR)
+                        .createNotification("Connection error","It seems like the plugIn can't connect to the AI. \n Please check if you are connected to the internet.", NotificationType.ERROR)
                         .notify(project);
             }
             return response;
@@ -117,19 +116,10 @@ public class GreenCodingSurveillance extends AnAction {
             String reason = result.reason;
             int[] correctedLines = result.lines;
 
-            SwingUtilities.invokeLater(() -> {
-                showPreviewDialog(codeInputWithLines, addLineNumbers(removeLineNumbers(correctedCode), startLine), reason, correctedLines, startLine, () -> {
-                    // Ensure that the write action is executed on the EDT
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        WriteCommandAction.runWriteCommandAction(project, () -> {
-                            editor.getDocument().replaceString(
-                                    editor.getSelectionModel().getSelectionStart(),
-                                    editor.getSelectionModel().getSelectionEnd(),
-                                    removeLineNumbers(correctedCode));
-                        });
-                    });
-                });
-            });
+            SwingUtilities.invokeLater(() -> showPreviewDialog(codeInputWithLines, addLineNumbers(removeLineNumbers(correctedCode), startLine), reason, correctedLines, startLine, () -> ApplicationManager.getApplication().invokeLater(() -> WriteCommandAction.runWriteCommandAction(project, () -> editor.getDocument().replaceString(
+                    editor.getSelectionModel().getSelectionStart(),
+                    editor.getSelectionModel().getSelectionEnd(),
+                    removeLineNumbers(correctedCode))))));
         });
     }
 
@@ -171,6 +161,14 @@ public class GreenCodingSurveillance extends AnAction {
         return new AiAnswer(code, reason, linesFromList);
     }
 
+    private int calculateProcessTime(String codeInput) {
+        int charsInCode = codeInput.length();
+
+        int tokenCount = charsInCode/ 4;
+
+        return 20 + (tokenCount * 94)/1000; // calculation based on 94 ms per generated token (https://www.taivo.ai/__gpt-3-5-and-gpt-4-response-times/)
+    }
+
     private void showPreviewDialog(String originalCode, String editedCode, String reason, int[] lines, int startLine, Runnable confirmAction) {
         JPanel panel = new JPanel(new GridBagLayout());
 
@@ -181,7 +179,7 @@ public class GreenCodingSurveillance extends AnAction {
         gbc.weighty = 2;
         gbc.fill = GridBagConstraints.BOTH;
 
-        JTextArea originalTextArea = highlightLines(new JTextArea(originalCode), lines, startLine, JBColor.RED);
+        JTextArea originalTextArea = highlightLines(new JTextArea(originalCode), lines, startLine);
         JTextArea editedTextArea = new JTextArea(editedCode);
         JTextArea additionalTextArea = new JTextArea(reason);
         additionalTextArea.setLineWrap(true);
@@ -235,13 +233,13 @@ public class GreenCodingSurveillance extends AnAction {
         }
     }
 
-    private JTextArea highlightLines(JTextArea textArea, int[] linesToHighlight, int startLine, JBColor color) {
+    private JTextArea highlightLines(JTextArea textArea, int[] linesToHighlight, int startLine) {
         JTextArea highlightedTextArea = new JTextArea();
         highlightedTextArea.setEditable(false);
         highlightedTextArea.setText(textArea.getText());
 
         Highlighter highlighter = highlightedTextArea.getHighlighter();
-        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(color);
+        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(JBColor.RED);
 
         String[] lines = textArea.getText().split("\n");
 
@@ -256,13 +254,11 @@ public class GreenCodingSurveillance extends AnAction {
                 endOffset = startOffset + lines[line - 1].length();
                 try {
                     highlighter.addHighlight(startOffset, endOffset, painter);
-                    System.out.println("Added highlighter for line: " + (line + startLine));
+                    //System.out.println("Added highlighter for line: " + (line + startLine));
                 } catch (Exception ex) {
                     System.out.println("Couldn't highlight lines because: ");
                     ex.printStackTrace();
                 }
-            } else {
-                System.out.println("Didn't highlight because of: line = " + line + " < lines.length = " + lines.length);
             }
         }
 
