@@ -90,7 +90,8 @@ public class GreenCodingSurveillance extends AnAction {
         int estimatedTimeInSeconds = calculateProcessTime(codeInputWithLines);
         JFrame parentFrame = WindowManager.getInstance().getFrame(project);
         LoadingDialog loadingDialog = new LoadingDialog(parentFrame, estimatedTimeInSeconds);
-        System.out.println("Start showing Loading-screen with estimated time being: " + estimatedTimeInSeconds);
+        System.out.println("-----------------------------------------------------------------------");
+        System.out.println("Start showing Loading-screen with estimated time being: " + estimatedTimeInSeconds + "s.");
         loadingDialog.showDialog();
 
         CompletableFuture.supplyAsync(() -> {

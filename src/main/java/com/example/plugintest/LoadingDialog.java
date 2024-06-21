@@ -117,6 +117,7 @@ public class LoadingDialog {
     public void hideDialog() {
         stopTimer();
         System.out.println("Response took " + ((System.currentTimeMillis() - startTime)/1000) + "s to complete.");
+        System.out.println("-----------------------------------------------------------------------");
         SwingUtilities.invokeLater(() -> dialog.setVisible(false));
     }
 
