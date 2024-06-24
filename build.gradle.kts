@@ -57,4 +57,9 @@ tasks {
     }
 }
 
+tasks.jar {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+}
+
+
 

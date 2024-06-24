@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="TestGreenCoding">
+    <output-path>J:/Desktop</output-path>
+    <root id="archive" name="TestGreenCoding.jar">
+      <element id="module-output" name="pluginTest.main" />
+    </root>
+  </artifact>
+</component>
