@@ -7,6 +7,7 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatMessage;
 import com.azure.ai.openai.models.ChatRole;
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.util.ClientOptions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,7 @@ public class KIConnect {
                 .endpoint(endpoint)
                 .credential(new AzureKeyCredential(azureOpenaiKey))
                 .buildAsyncClient();
-        System.out.println(client);
+        System.out.println("Start to connect to " + client);
 
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(new ChatMessage(ChatRole.SYSTEM).setContent("""
