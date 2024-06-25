@@ -1,5 +1,8 @@
 package com.example.plugintest;
 
+import com.example.plugintest.settings.PluginSettings;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
@@ -12,6 +15,7 @@ import com.intellij.openapi.editor.Caret;
 import com.intellij.openapi.editor.CaretModel;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.VisualPosition;
+import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.ui.JBColor;
@@ -51,6 +55,10 @@ public class GreenCodingSurveillance extends AnAction {
         Project project = e.getProject();
         Editor editor = e.getData(PlatformDataKeys.EDITOR);
 
+        if (!areSettingsSet(project)) {
+            return;
+        }
+
         if (editor != null) {
             String selectedText = editor.getSelectionModel().getSelectedText();
             if (selectedText != null && !selectedText.isEmpty()) {
@@ -68,6 +76,30 @@ public class GreenCodingSurveillance extends AnAction {
                 processCodeAsync(codeInputWithLines, project, editor, 0);
             }
         }
+    }
+
+    private boolean areSettingsSet(Project project) {
+        PluginSettings settings = PluginSettings.getInstance();
+        String endpoint = settings.getEndpoint();
+        String azureOpenaiKey = settings.getApiKey();
+
+        if (endpoint == null || endpoint.isEmpty() || azureOpenaiKey == null || azureOpenaiKey.isEmpty()) {
+            Notification notification = NotificationGroupManager.getInstance()
+                    .getNotificationGroup("Load Error")
+                    .createNotification(
+                            "Settings Error",
+                            "Please configure the Endpoint and API Key in the settings.",
+                            NotificationType.ERROR);
+
+            notification.addAction(NotificationAction.createSimple("Open Settings", () ->
+                    ShowSettingsUtil.getInstance().showSettingsDialog(project, "Inspector Green Code Settings")
+            ));
+
+            notification.notify(project);
+            return false;
+        }
+
+        return true;
     }
 
     private String addLineNumbers(String input, int startLine) {

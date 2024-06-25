@@ -18,7 +18,9 @@
 
     <!-- Extension points defined by the plugin. -->
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Add extension points here if needed -->
+        <applicationService serviceInterface="com.example.plugintest.settings.PluginSettings" serviceImplementation="com.example.plugintest.settings.PluginSettings"/>
+        <projectConfigurable instance="com.example.plugintest.settings.PluginConfigurable" displayName="Inspector Green Code Settings"/>
+        <notificationGroup id="Load Error" displayType="BALLOON" />
     </extensions>
 
     <!-- Actions defined by the plugin. -->

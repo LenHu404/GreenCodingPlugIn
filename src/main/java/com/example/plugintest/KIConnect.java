@@ -7,7 +7,7 @@ import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.ChatMessage;
 import com.azure.ai.openai.models.ChatRole;
 import com.azure.core.credential.AzureKeyCredential;
-import com.azure.core.util.ClientOptions;
+import com.example.plugintest.settings.PluginSettings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,8 +17,10 @@ public class KIConnect {
 
 
     public static CompletableFuture<String> getAIAnswerAsync(String codeInput) {
-        String endpoint = "https://greencoding-ai.openai.azure.com/";
-        String azureOpenaiKey = "eb7709e19cb14584862d1a78fb1122ba";
+        PluginSettings settings = PluginSettings.getInstance();
+        String endpoint = settings.getEndpoint();
+        String azureOpenaiKey = settings.getApiKey();
+
         String deploymentOrModelId = "gpt-4";
         OpenAIAsyncClient client = new OpenAIClientBuilder()
                 .endpoint(endpoint)
