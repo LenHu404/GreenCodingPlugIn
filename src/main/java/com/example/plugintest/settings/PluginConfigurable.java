@@ -1,6 +1,5 @@
 package com.example.plugintest.settings;
 
-
 import com.intellij.openapi.options.Configurable;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
@@ -28,7 +27,8 @@ public class PluginConfigurable implements Configurable {
     public boolean isModified() {
         PluginSettings settings = PluginSettings.getInstance();
         return !settingsComponent.getEndpoint().equals(settings.getEndpoint()) ||
-                !settingsComponent.getApiKey().equals(settings.getApiKey());
+                !settingsComponent.getApiKey().equals(settings.getApiKey()) ||
+                settingsComponent.getMode() != settings.getMode();
     }
 
     @Override
@@ -36,6 +36,7 @@ public class PluginConfigurable implements Configurable {
         PluginSettings settings = PluginSettings.getInstance();
         settings.setEndpoint(settingsComponent.getEndpoint());
         settings.setApiKey(settingsComponent.getApiKey());
+        settings.setMode(settingsComponent.getMode());
     }
 
     @Override
@@ -43,10 +44,6 @@ public class PluginConfigurable implements Configurable {
         PluginSettings settings = PluginSettings.getInstance();
         settingsComponent.setEndpoint(settings.getEndpoint());
         settingsComponent.setApiKey(settings.getApiKey());
-    }
-
-    @Override
-    public void disposeUIResources() {
-        settingsComponent = null;
+        settingsComponent.setMode(settings.getMode());
     }
 }
