@@ -9,7 +9,12 @@ import com.azure.ai.openai.models.ChatRole;
 import com.azure.core.credential.AzureKeyCredential;
 import com.example.plugintest.settings.Mode;
 import com.example.plugintest.settings.PluginSettings;
+import com.google.gson.JsonObject;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -17,7 +22,7 @@ import java.util.concurrent.CompletableFuture;
 public class KIConnect {
 
 
-    public static CompletableFuture<String> getAIAnswerAsync(String codeInput) {
+    public static CompletableFuture<String> getOpenAIAnswerAsync(String codeInput) {
         PluginSettings settings = PluginSettings.getInstance();
         String endpoint = settings.getEndpoint();
         String azureOpenaiKey = settings.getApiKey();
@@ -253,5 +258,27 @@ public class KIConnect {
                     -!- 1:import java.util.ArrayList; \n2: \n3:class Main { \n4: \n5:    public static void main(String[] args) { \n6: \n7:        int number = 10; \n8:        int divisor = 5; \n9:        int result = 0; \n10:        result = number / divisor; \n11:        System.out.println("Result: " + result); \n12: \n13:        ArrayList<Integer> myNumbers = new ArrayList<Integer>(); \n14:        myNumbers.add(1); \n15:        myNumbers.add(2); \n16:        myNumbers.add(3); \n17:        myNumbers.add(4); \n18: \n19:    } \n20: \n21:} \n22: -!-
                     $!$ $!$
                     """));
+    }
+
+    public static CompletableFuture<String> getOllamaAnswerAsync(String codeInput) {
+        PluginSettings settings = PluginSettings.getInstance();
+        Mode mode = settings.getMode();
+
+        String requestUrl = "http://127.0.0.1:5000/";
+
+        JsonObject json = new JsonObject();
+        json.addProperty("data", codeInput);
+        json.addProperty("mode", mode == Mode.FEW_SHOT ? "few_shot" : "one_shot");
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(requestUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json.toString()))
+                .build();
+
+        return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenApply(response -> response);
     }
 }

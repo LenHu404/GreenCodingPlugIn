@@ -31,7 +31,8 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
-import static com.example.plugintest.KIConnect.getAIAnswerAsync;
+import static com.example.plugintest.KIConnect.getOllamaAnswerAsync;
+import static com.example.plugintest.KIConnect.getOpenAIAnswerAsync;
 
 public class GreenCodingSurveillance extends AnAction {
 
@@ -80,6 +81,12 @@ public class GreenCodingSurveillance extends AnAction {
 
     private boolean areSettingsSet(Project project) {
         PluginSettings settings = PluginSettings.getInstance();
+        String service = settings.getService();
+
+        if (!"OpenAI".equals(service)) {
+            return true;
+        }
+
         String endpoint = settings.getEndpoint();
         String azureOpenaiKey = settings.getApiKey();
 
@@ -119,6 +126,9 @@ public class GreenCodingSurveillance extends AnAction {
     }
 
     private void processCodeAsync(String codeInputWithLines, Project project, Editor editor, int startLine) {
+        PluginSettings settings = PluginSettings.getInstance();
+        String service = settings.getService();
+
         int estimatedTimeInSeconds = calculateProcessTime(codeInputWithLines);
         JFrame parentFrame = WindowManager.getInstance().getFrame(project);
         LoadingDialog loadingDialog = new LoadingDialog(parentFrame, estimatedTimeInSeconds);
@@ -129,7 +139,12 @@ public class GreenCodingSurveillance extends AnAction {
         CompletableFuture.supplyAsync(() -> {
             String response = null;
             try {
-                response = getAIAnswerAsync(codeInputWithLines).get();
+                if ("OpenAI".equals(service)) {
+                    response = getOpenAIAnswerAsync(codeInputWithLines).get();
+                } else if ("Ollama".equals(service)) {
+                    response = getOllamaAnswerAsync(codeInputWithLines).get();
+                    System.out.println(response);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 System.out.println("Can't Connect.");

@@ -26,7 +26,8 @@ public class PluginConfigurable implements Configurable {
     @Override
     public boolean isModified() {
         PluginSettings settings = PluginSettings.getInstance();
-        return !settingsComponent.getEndpoint().equals(settings.getEndpoint()) ||
+        return !settingsComponent.getService().equals(settings.getService()) ||
+                !settingsComponent.getEndpoint().equals(settings.getEndpoint()) ||
                 !settingsComponent.getApiKey().equals(settings.getApiKey()) ||
                 settingsComponent.getMode() != settings.getMode();
     }
@@ -34,6 +35,7 @@ public class PluginConfigurable implements Configurable {
     @Override
     public void apply() {
         PluginSettings settings = PluginSettings.getInstance();
+        settings.setService(settingsComponent.getService());
         settings.setEndpoint(settingsComponent.getEndpoint());
         settings.setApiKey(settingsComponent.getApiKey());
         settings.setMode(settingsComponent.getMode());
@@ -42,6 +44,7 @@ public class PluginConfigurable implements Configurable {
     @Override
     public void reset() {
         PluginSettings settings = PluginSettings.getInstance();
+        settingsComponent.setService(settings.getService());
         settingsComponent.setEndpoint(settings.getEndpoint());
         settingsComponent.setApiKey(settings.getApiKey());
         settingsComponent.setMode(settings.getMode());

@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 public class PluginSettings implements PersistentStateComponent<PluginSettings.State> {
 
     public static class State {
+        public String service = "OpenAI";
         public String endpoint = "";
         public String apiKey = "";
         public String mode = Mode.FEW_SHOT.getValue();
@@ -35,6 +36,14 @@ public class PluginSettings implements PersistentStateComponent<PluginSettings.S
     @NotNull
     public static PluginSettings getInstance() {
         return ServiceManager.getService(PluginSettings.class);
+    }
+
+    public String getService() {
+        return myState.service;
+    }
+
+    public void setService(String service) {
+        myState.service = service;
     }
 
     public String getEndpoint() {
