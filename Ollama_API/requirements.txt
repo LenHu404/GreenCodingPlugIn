@@ -1,9 +1,0 @@
-pip install torch transformers typing-extensions accelerate
-
-Huggingface anmelden & für LLama3 Zugang Registrieren
-
-Settings->Access Token mit Read Rechten anlegen
-
-Token als Environment setzen os.environ["HF_TOKEN"] = "..."
-
-mit python app.py starten, wird beim ersten Ausführen Model heruntergeladen (ca 20GB)
